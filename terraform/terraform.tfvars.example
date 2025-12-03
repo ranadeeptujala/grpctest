@@ -1,0 +1,23 @@
+# Copy this file to terraform.tfvars and update values
+
+aws_region   = "us-east-1"
+project_name = "grpc-server"
+environment  = "dev"
+
+vpc_cidr = "10.0.0.0/16"
+
+grpc_port   = 9090
+health_port = 8081
+
+# ACM Certificate ARN (required for HTTPS/gRPC)
+certificate_arn = "arn:aws:acm:us-east-1:123456789012:certificate/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+
+# GitHub OIDC Configuration
+github_org  = "your-github-username-or-org"
+github_repo = "grpctest"
+
+# ECS Configuration
+ecs_cpu           = 512
+ecs_memory        = 1024
+ecs_desired_count = 2
+

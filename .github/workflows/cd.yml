@@ -1,0 +1,190 @@
+name: CD
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+      - 'terraform/**'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: grpc-server-dev
+  ECS_CLUSTER: grpc-server-dev
+  ECS_SERVICE: grpc-server-dev
+  CONTAINER_NAME: grpc-server
+
+permissions:
+  id-token: write   # Required for OIDC
+  contents: read
+
+jobs:
+  build-and-push:
+    name: Build & Push to ECR
+    runs-on: ubuntu-latest
+    
+    outputs:
+      image: ${{ steps.build-image.outputs.image }}
+      image_tag: ${{ steps.build-image.outputs.image_tag }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Run Tests
+        run: mvn test -B
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push image to ECR
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          # Build and push with commit SHA tag
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          
+          # Also tag as latest
+          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+          echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+  deploy-dev:
+    name: Deploy to Dev
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    environment: dev
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Download current task definition
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition ${{ env.ECS_SERVICE }} \
+            --query taskDefinition > task-definition.json
+
+      - name: Update image in task definition
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          container-name: ${{ env.CONTAINER_NAME }}
+          image: ${{ needs.build-and-push.outputs.image }}
+
+      - name: Deploy to ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ${{ steps.task-def.outputs.task-definition }}
+          service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true
+
+      - name: Deployment Summary
+        run: |
+          echo "## 🚀 Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Environment** | dev |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Image** | ${{ needs.build-and-push.outputs.image }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Cluster** | ${{ env.ECS_CLUSTER }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Service** | ${{ env.ECS_SERVICE }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Commit** | ${{ github.sha }} |" >> $GITHUB_STEP_SUMMARY
+
+  # Uncomment for staging deployment
+  # deploy-staging:
+  #   name: Deploy to Staging
+  #   needs: [build-and-push, deploy-dev]
+  #   runs-on: ubuntu-latest
+  #   environment: staging
+  #   
+  #   env:
+  #     ECS_CLUSTER: grpc-server-staging
+  #     ECS_SERVICE: grpc-server-staging
+  #     ECR_REPOSITORY: grpc-server-staging
+  #   
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v4
+  #     
+  #     - name: Configure AWS credentials (OIDC)
+  #       uses: aws-actions/configure-aws-credentials@v4
+  #       with:
+  #         role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+  #         aws-region: ${{ env.AWS_REGION }}
+  #     
+  #     - name: Deploy to ECS
+  #       run: |
+  #         aws ecs update-service \
+  #           --cluster ${{ env.ECS_CLUSTER }} \
+  #           --service ${{ env.ECS_SERVICE }} \
+  #           --force-new-deployment
+
+  # Uncomment for production deployment (requires manual approval)
+  # deploy-prod:
+  #   name: Deploy to Production
+  #   needs: [build-and-push, deploy-staging]
+  #   runs-on: ubuntu-latest
+  #   environment: prod  # Requires manual approval in GitHub
+  #   
+  #   env:
+  #     ECS_CLUSTER: grpc-server-prod
+  #     ECS_SERVICE: grpc-server-prod
+  #     ECR_REPOSITORY: grpc-server-prod
+  #   
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v4
+  #     
+  #     - name: Configure AWS credentials (OIDC)
+  #       uses: aws-actions/configure-aws-credentials@v4
+  #       with:
+  #         role-to-assume: ${{ secrets.AWS_ROLE_ARN_PROD }}
+  #         aws-region: ${{ env.AWS_REGION }}
+  #     
+  #     - name: Deploy to ECS
+  #       run: |
+  #         aws ecs update-service \
+  #           --cluster ${{ env.ECS_CLUSTER }} \
+  #           --service ${{ env.ECS_SERVICE }} \
+  #           --force-new-deployment
+
