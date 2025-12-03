@@ -22,7 +22,7 @@ on:
           - destroy
 
 env:
-  AWS_REGION: us-east-1
+  AWS_REGION: us-east-2
   AWS_ROLE_ARN: arn:aws:iam::093667080731:role/GitHubActions-EKS-Deploy
   TF_VERSION: 1.6.0
 

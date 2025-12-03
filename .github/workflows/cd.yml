@@ -20,7 +20,7 @@ on:
           - prod
 
 env:
-  AWS_REGION: us-east-1
+  AWS_REGION: us-east-2
   AWS_ROLE_ARN: arn:aws:iam::093667080731:role/GitHubActions-EKS-Deploy
   ECR_REPOSITORY: grpc-server-dev
   ECS_CLUSTER: grpc-server-dev
