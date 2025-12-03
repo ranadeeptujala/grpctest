@@ -51,14 +51,14 @@ module "ecr" {
 module "iam" {
   source = "./modules/iam"
 
-  project_name        = var.project_name
-  environment         = var.environment
-  github_org          = var.github_org
-  github_repo         = var.github_repo
-  ecr_repository_arn  = module.ecr.repository_arn
-  ecs_cluster_arn     = module.ecs.cluster_arn
-  ecs_service_arn     = module.ecs.service_arn
-  ecs_task_role_arn   = module.ecs.task_role_arn
+  project_name       = var.project_name
+  environment        = var.environment
+  github_org         = var.github_org
+  github_repo        = var.github_repo
+  ecr_repository_arn = module.ecr.repository_arn
+  ecs_cluster_arn    = module.ecs.cluster_arn
+  ecs_service_arn    = module.ecs.service_arn
+  ecs_task_role_arn  = module.ecs.task_role_arn
 }
 
 # ALB Module (Internal)
@@ -78,17 +78,16 @@ module "alb" {
 module "ecs" {
   source = "./modules/ecs"
 
-  project_name        = var.project_name
-  environment         = var.environment
-  vpc_id              = module.vpc.vpc_id
-  private_subnet_ids  = module.vpc.private_subnet_ids
+  project_name          = var.project_name
+  environment           = var.environment
+  vpc_id                = module.vpc.vpc_id
+  private_subnet_ids    = module.vpc.private_subnet_ids
   alb_security_group_id = module.alb.security_group_id
-  target_group_arn    = module.alb.target_group_arn
-  ecr_repository_url  = module.ecr.repository_url
-  grpc_port           = var.grpc_port
-  health_port         = var.health_port
-  cpu                 = var.ecs_cpu
-  memory              = var.ecs_memory
-  desired_count       = var.ecs_desired_count
+  target_group_arn      = module.alb.target_group_arn
+  ecr_repository_url    = module.ecr.repository_url
+  grpc_port             = var.grpc_port
+  health_port           = var.health_port
+  cpu                   = var.ecs_cpu
+  memory                = var.ecs_memory
+  desired_count         = var.ecs_desired_count
 }
-
