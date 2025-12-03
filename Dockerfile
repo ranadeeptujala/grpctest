@@ -1,22 +1,25 @@
-# Build stage
-FROM maven:3.9-eclipse-temurin-21-alpine AS build
+# Build stage - use full Maven image with proper architecture
+FROM maven:3.9.6-eclipse-temurin-21 AS build
 
 WORKDIR /app
 
-# Copy pom.xml first for dependency caching
+# Copy pom.xml and download dependencies
 COPY pom.xml .
-RUN mvn dependency:go-offline -B
+RUN mvn dependency:resolve -B
 
-# Copy source code
+# Copy source files
 COPY src ./src
 
 # Build the application
 RUN mvn clean package -DskipTests -B
 
-# Runtime stage
+# Runtime stage - use slim JRE image
 FROM eclipse-temurin:21-jre-alpine
 
 WORKDIR /app
+
+# Install curl for health checks
+RUN apk add --no-cache curl
 
 # Add non-root user
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
@@ -34,7 +37,7 @@ EXPOSE 9090 8081
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:8081/actuator/health || exit 1
+  CMD curl -f http://localhost:8081/actuator/health || exit 1
 
 # Run with virtual threads optimizations
 ENTRYPOINT ["java", \
@@ -42,4 +45,3 @@ ENTRYPOINT ["java", \
   "-XX:+ZGenerational", \
   "-Djava.security.egd=file:/dev/./urandom", \
   "-jar", "app.jar"]
-
