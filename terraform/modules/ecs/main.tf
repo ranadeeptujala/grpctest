@@ -202,4 +202,3 @@ resource "aws_ecs_service" "main" {
     Name = "${var.project_name}-${var.environment}"
   }
 }
-

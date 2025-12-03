@@ -89,4 +89,3 @@ resource "aws_lb_listener" "https" {
     Name = "${var.project_name}-${var.environment}-https-listener"
   }
 }
-

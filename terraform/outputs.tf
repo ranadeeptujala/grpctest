@@ -42,4 +42,3 @@ output "grpc_endpoint" {
   description = "gRPC endpoint (internal)"
   value       = "dns:///${module.alb.dns_name}:443"
 }
-
