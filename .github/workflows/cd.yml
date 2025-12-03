@@ -1,12 +1,13 @@
 name: CD
 
 on:
-  push:
-    branches: [main]
-    paths-ignore:
-      - 'docs/**'
-      - '*.md'
-      - 'terraform/**'
+  # Disabled automatic deployment until AWS is configured
+  # push:
+  #   branches: [main]
+  #   paths-ignore:
+  #     - 'docs/**'
+  #     - '*.md'
+  #     - 'terraform/**'
   workflow_dispatch:
     inputs:
       environment:
