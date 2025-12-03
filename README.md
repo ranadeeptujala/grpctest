@@ -1,244 +1,277 @@
-# Java 21 Virtual Threads + Spring Boot + gRPC Demo
+# gRPC Server with Java 21 Virtual Threads
 
-A demonstration project showcasing **Java 21 Virtual Threads** with **Spring Boot 3.x** and **gRPC**.
+A high-performance gRPC server using **Java 21 Virtual Threads** and **Spring Boot 3.x**.
 
 ## Features
 
-- ✅ **Java 21 Virtual Threads** - Lightweight concurrency for massive scalability
-- ✅ **Spring Boot 3.2** - Modern Spring framework with native virtual thread support
-- ✅ **gRPC** - High-performance RPC framework with all four communication patterns
-- ✅ **Automatic Code Generation** - Proto files compiled to Java classes via Maven
-- ✅ **REST API Bridge** - HTTP endpoints to test gRPC services
+- ✅ **Java 21 Virtual Threads** - Handle millions of concurrent requests
+- ✅ **gRPC** - High-performance RPC with Protocol Buffers
+- ✅ **All 4 gRPC Patterns** - Unary, Server Streaming, Client Streaming, Bidirectional
+- ✅ **Spring Boot 3.2** - Modern framework with native virtual thread support
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    Spring Boot Application                   │
-├─────────────────────────────────────────────────────────────┤
-│  REST Controller (Port 8080)     │   gRPC Server (Port 9090) │
-│  ┌─────────────────────────┐     │   ┌─────────────────────┐ │
-│  │ /api/greetings/*        │     │   │ GreetingService     │ │
-│  │ (Virtual Threads)       │────►│   │ (Virtual Threads)   │ │
-│  └─────────────────────────┘     │   └─────────────────────┘ │
-│              │                   │             ▲              │
-│              ▼                   │             │              │
-│  ┌─────────────────────────┐     │             │              │
-│  │ gRPC Client             │─────┼─────────────┘              │
-│  │ (Blocking & Async)      │     │                            │
-│  └─────────────────────────┘     │                            │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              AWS VPC                                         │
+│                                                                              │
+│   ┌─────────────────────────┐         ┌─────────────────────────────────┐   │
+│   │   Your Microservice     │         │     gRPC Server (This Project)  │   │
+│   │   (gRPC Client)         │         │                                 │   │
+│   │                         │  gRPC   │   Port 9090                     │   │
+│   │   - Order Service       │────────►│   - GreetingService             │   │
+│   │   - User Service        │  HTTP/2 │   - SayHello                    │   │
+│   │   - Payment Service     │         │   - SayHelloServerStream        │   │
+│   │   - Any Service...      │         │   - SayHelloClientStream        │   │
+│   │                         │         │   - SayHelloBidirectional       │   │
+│   └─────────────────────────┘         └─────────────────────────────────┘   │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
-
-## Prerequisites
-
-- **Java 21** or higher
-- **Maven 3.8+**
 
 ## Quick Start
 
-### 1. Build the Project
+### Prerequisites
+- Java 21+
+- Maven 3.8+
+
+### Run the Server
 
 ```bash
-# Clean and compile (generates gRPC classes from proto files)
-mvn clean compile
-
-# Or build the full package
-mvn clean package -DskipTests
+mvn clean compile spring-boot:run
 ```
 
-### 2. Run the Application
+### Ports
 
-```bash
-mvn spring-boot:run
-```
+| Port | Service |
+|------|---------|
+| **9090** | gRPC Server |
+| **8081** | Health Check (Actuator) |
 
-### 3. Test the Endpoints
+## gRPC Methods
 
-#### Check Health (verify virtual threads are active)
-```bash
-curl http://localhost:8080/api/greetings/health
-```
+| Method | Pattern | Description |
+|--------|---------|-------------|
+| `SayHello` | Unary | Single request → Single response |
+| `SayHelloServerStream` | Server Streaming | Single request → Stream of responses |
+| `SayHelloClientStream` | Client Streaming | Stream of requests → Single response |
+| `SayHelloBidirectional` | Bidirectional | Stream ↔ Stream |
 
-Expected response:
-```json
-{
-  "status": "UP",
-  "threadName": "tomcat-handler-0",
-  "isVirtualThread": true,
-  "threadId": 42,
-  "javaVersion": "21.0.1",
-  "availableProcessors": 8
-}
-```
-
-#### Simple Greeting (Unary RPC)
-```bash
-curl "http://localhost:8080/api/greetings/hello?name=John&language=en"
-```
-
-#### Streaming Greetings (Server Streaming RPC)
-```bash
-curl "http://localhost:8080/api/greetings/hello-stream?name=John"
-```
-
-#### Multi-Greeting (Client Streaming RPC)
-```bash
-curl -X POST http://localhost:8080/api/greetings/hello-many \
-  -H "Content-Type: application/json" \
-  -d '["Alice", "Bob", "Charlie"]'
-```
-
-#### Bidirectional Streaming
-```bash
-curl -X POST http://localhost:8080/api/greetings/hello-bidirectional \
-  -H "Content-Type: application/json" \
-  -d '["Alice", "Bob", "Charlie"]'
-```
-
-### 4. Test with grpcurl (Optional)
-
-If you have [grpcurl](https://github.com/fullstorydev/grpcurl) installed:
+## Test with grpcurl
 
 ```bash
 # List services
 grpcurl -plaintext localhost:9090 list
 
-# Call the service directly
-grpcurl -plaintext -d '{"name": "World", "language": "en"}' \
+# Unary
+grpcurl -plaintext -d '{"name":"John","language":"en"}' \
   localhost:9090 greeting.GreetingService/SayHello
+
+# Server Streaming
+grpcurl -plaintext -d '{"name":"John"}' \
+  localhost:9090 greeting.GreetingService/SayHelloServerStream
+
+# Client Streaming
+grpcurl -plaintext -d '{"name":"Alice"}
+{"name":"Bob"}
+{"name":"Charlie"}' \
+  localhost:9090 greeting.GreetingService/SayHelloClientStream
+
+# Bidirectional
+grpcurl -plaintext -d '{"name":"Alice"}
+{"name":"Bob"}' \
+  localhost:9090 greeting.GreetingService/SayHelloBidirectional
 ```
 
 ## Project Structure
 
 ```
-grpctest/
-├── pom.xml                              # Maven configuration
-├── src/
-│   ├── main/
-│   │   ├── java/com/example/grpc/
-│   │   │   ├── GrpcVirtualThreadsApplication.java  # Main app
-│   │   │   ├── config/
-│   │   │   │   └── VirtualThreadConfig.java        # Virtual thread config
-│   │   │   ├── service/
-│   │   │   │   └── GreetingGrpcService.java        # gRPC service impl
-│   │   │   ├── client/
-│   │   │   │   └── GreetingGrpcClient.java         # gRPC client
-│   │   │   └── controller/
-│   │   │       └── GreetingController.java         # REST endpoints
-│   │   ├── proto/
-│   │   │   └── greeting.proto                      # Proto definitions
-│   │   └── resources/
-│   │       └── application.yml                     # Configuration
-│   └── test/
-│       └── java/com/example/grpc/
-│           └── GreetingGrpcServiceTest.java        # Integration tests
-└── README.md
+src/main/
+├── proto/
+│   └── greeting.proto              # gRPC service definition
+├── java/com/example/grpc/
+│   ├── GrpcServerApplication.java  # Main application
+│   ├── config/
+│   │   └── VirtualThreadConfig.java # Virtual threads setup
+│   └── service/
+│       └── GreetingGrpcService.java # gRPC implementation
+└── resources/
+    └── application.yml             # Configuration
 ```
 
-## Virtual Threads Configuration
+---
 
-Virtual threads are enabled in three places:
+# How to Call This gRPC Server from Another Microservice
 
-### 1. Spring MVC (application.yml)
+## Step 1: Copy Proto File
+
+Copy `src/main/proto/greeting.proto` to your client microservice.
+
+## Step 2: Add Dependencies
+
+```xml
+<dependency>
+    <groupId>net.devh</groupId>
+    <artifactId>grpc-client-spring-boot-starter</artifactId>
+    <version>3.0.0.RELEASE</version>
+</dependency>
+<dependency>
+    <groupId>io.grpc</groupId>
+    <artifactId>grpc-protobuf</artifactId>
+    <version>1.60.0</version>
+</dependency>
+<dependency>
+    <groupId>io.grpc</groupId>
+    <artifactId>grpc-stub</artifactId>
+    <version>1.60.0</version>
+</dependency>
+<dependency>
+    <groupId>io.grpc</groupId>
+    <artifactId>grpc-netty-shaded</artifactId>
+    <version>1.60.0</version>
+</dependency>
+```
+
+## Step 3: Configure Client
+
 ```yaml
-spring:
-  threads:
-    virtual:
-      enabled: true
+grpc:
+  client:
+    greeting-service:
+      address: static://localhost:9090      # Local
+      # address: dns:///grpc-alb.internal:443  # AWS
+      negotiation-type: plaintext
 ```
 
-### 2. Tomcat HTTP Connector (VirtualThreadConfig.java)
+## Step 4: Create gRPC Client
+
 ```java
-@Bean
-public TomcatProtocolHandlerCustomizer<?> protocolHandlerVirtualThreadExecutorCustomizer() {
-    return protocolHandler -> {
-        protocolHandler.setExecutor(Executors.newVirtualThreadPerTaskExecutor());
-    };
+@Service
+public class GreetingGrpcClient {
+
+    @GrpcClient("greeting-service")
+    private GreetingServiceGrpc.GreetingServiceBlockingStub blockingStub;
+
+    // Unary
+    public HelloResponse sayHello(String name, String language) {
+        HelloRequest request = HelloRequest.newBuilder()
+                .setName(name)
+                .setLanguage(language)
+                .build();
+        return blockingStub.sayHello(request);
+    }
+
+    // Server Streaming
+    public List<HelloResponse> sayHelloServerStream(String name) {
+        HelloRequest request = HelloRequest.newBuilder()
+                .setName(name)
+                .build();
+        List<HelloResponse> responses = new ArrayList<>();
+        Iterator<HelloResponse> iterator = blockingStub.sayHelloServerStream(request);
+        while (iterator.hasNext()) {
+            responses.add(iterator.next());
+        }
+        return responses;
+    }
 }
 ```
 
-### 3. gRPC Server (VirtualThreadConfig.java)
+## Step 5: Use in Your Service
+
 ```java
-@Bean
-public GrpcServerConfigurer grpcServerConfigurer() {
-    return serverBuilder -> {
-        serverBuilder.executor(Executors.newVirtualThreadPerTaskExecutor());
-    };
+@Service
+public class OrderService {
+
+    private final GreetingGrpcClient grpcClient;
+
+    public OrderService(GreetingGrpcClient grpcClient) {
+        this.grpcClient = grpcClient;
+    }
+
+    public void processOrder(String customerName) {
+        HelloResponse greeting = grpcClient.sayHello(customerName, "en");
+        System.out.println("Greeting: " + greeting.getMessage());
+    }
 }
 ```
 
-## gRPC Communication Patterns
+---
 
-| Pattern | Method | Description |
-|---------|--------|-------------|
-| Unary | `SayHello` | Single request → Single response |
-| Server Streaming | `SayHelloStream` | Single request → Stream of responses |
-| Client Streaming | `SayHelloToMany` | Stream of requests → Single response |
-| Bidirectional | `SayHelloBidirectional` | Stream of requests ↔ Stream of responses |
+## Virtual Threads
 
-## Supported Languages
+This server uses Java 21 Virtual Threads for maximum concurrency:
 
-The greeting service supports multiple languages:
-
-| Code | Language | Greeting |
-|------|----------|----------|
-| `en` | English | Hello |
-| `es` | Spanish | Hola |
-| `fr` | French | Bonjour |
-| `de` | German | Hallo |
-| `it` | Italian | Ciao |
-| `pt` | Portuguese | Olá |
-| `ja` | Japanese | こんにちは |
-| `ko` | Korean | 안녕하세요 |
-| `zh` | Chinese | 你好 |
-
-## Running Tests
-
-```bash
-mvn test
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│              Virtual Threads (Millions possible!)                            │
+│  ┌────┐ ┌────┐ ┌────┐ ┌────┐ ┌────┐ ┌────┐ ┌────┐ ┌────┐ ┌────┐            │
+│  │VT1 │ │VT2 │ │VT3 │ │VT4 │ │VT5 │ │VT6 │ │VT7 │ │VT8 │ │... │            │
+│  │gRPC│ │gRPC│ │gRPC│ │gRPC│ │gRPC│ │gRPC│ │gRPC│ │gRPC│ │gRPC│            │
+│  └────┘ └────┘ └────┘ └────┘ └────┘ └────┘ └────┘ └────┘ └────┘            │
+│       └────────────────────┬────────────────────────┘                       │
+│                            ▼                                                 │
+│               ┌─────────┐ ┌─────────┐ ┌─────────┐                           │
+│               │Carrier 1│ │Carrier 2│ │Carrier 3│  (Few platform threads)   │
+│               └─────────┘ └─────────┘ └─────────┘                           │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-## Why Virtual Threads?
-
-Virtual threads (Project Loom) provide:
-
-1. **Lightweight** - Millions of virtual threads vs thousands of platform threads
-2. **Simple Code** - Write blocking code that scales like async
-3. **Better Resource Utilization** - Virtual threads unmount from carrier threads during blocking
-4. **Reduced Complexity** - No need for reactive/callback programming models
-
-### Performance Comparison
-
-| Metric | Platform Threads | Virtual Threads |
+| Aspect | Platform Threads | Virtual Threads |
 |--------|-----------------|-----------------|
-| Memory per thread | ~1MB | ~few KB |
-| Max concurrent | ~10,000 | ~millions |
-| Context switch | OS kernel | JVM (cheap) |
-| Blocking I/O | Blocks OS thread | Unmounts, reuses |
+| Memory | ~1MB each | ~few KB each |
+| Max concurrent | ~10,000 | **Millions** |
+| Blocking I/O | Blocks OS thread | **Unmounts** (free!) |
 
-## Troubleshooting
+---
 
-### Proto compilation fails
-```bash
-# Ensure you have the os-maven-plugin extension
-mvn clean compile -X
+## AWS Deployment
+
+### Internal ALB Configuration
+
+```yaml
+grpc:
+  client:
+    greeting-service:
+      address: dns:///grpc-internal-alb.yourcompany.internal:443
+      negotiation-type: tls
 ```
 
-### Port already in use
-```bash
-# Check what's using the ports
-lsof -i :8080
-lsof -i :9090
+### Network Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              AWS VPC                                         │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │                         Private Subnet                                 │  │
+│  │  ┌─────────────────┐         ┌─────────────────┐                      │  │
+│  │  │ Order Service   │         │ User Service    │                      │  │
+│  │  │ (gRPC Client)   │         │ (gRPC Client)   │                      │  │
+│  │  └────────┬────────┘         └────────┬────────┘                      │  │
+│  │           └───────────┬───────────────┘                                │  │
+│  │                       ▼                                                │  │
+│  │           ┌───────────────────────┐                                   │  │
+│  │           │    Internal ALB       │                                   │  │
+│  │           │    (gRPC - HTTP/2)    │                                   │  │
+│  │           └───────────┬───────────┘                                   │  │
+│  │                       ▼                                                │  │
+│  │           ┌───────────────────────┐                                   │  │
+│  │           │    gRPC Server        │                                   │  │
+│  │           │    Port 9090          │                                   │  │
+│  │           └───────────────────────┘                                   │  │
+│  └────────────────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Virtual threads not working
-Ensure you're running with Java 21+:
-```bash
-java -version
-mvn -version
-```
+---
+
+## Documentation
+
+See `docs/` folder for detailed documentation:
+- `architecture.md` - System architecture
+- `grpc-client-guide.md` - Full client implementation guide
+- `aws-alb-config.md` - AWS ALB configuration
+- `sequence-diagrams.md` - Sequence diagrams
 
 ## License
 
-MIT License
+MIT
