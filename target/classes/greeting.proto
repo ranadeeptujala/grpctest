@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "com.example.grpc.proto";
+option java_outer_classname = "GreetingProto";
+
+package greeting;
+
+// gRPC Service with all 4 communication patterns
+service GreetingService {
+    // 1. Unary RPC - Single request/response
+    rpc SayHello (HelloRequest) returns (HelloResponse);
+    
+    // 2. Server Streaming RPC - Single request, stream of responses
+    rpc SayHelloServerStream (HelloRequest) returns (stream HelloResponse);
+    
+    // 3. Client Streaming RPC - Stream of requests, single response
+    rpc SayHelloClientStream (stream HelloRequest) returns (HelloResponse);
+    
+    // 4. Bidirectional Streaming RPC - Stream both ways
+    rpc SayHelloBidirectional (stream HelloRequest) returns (stream HelloResponse);
+}
+
+message HelloRequest {
+    string name = 1;
+    string language = 2;
+}
+
+message HelloResponse {
+    string message = 1;
+    string timestamp = 2;
+    string thread_info = 3;
+}

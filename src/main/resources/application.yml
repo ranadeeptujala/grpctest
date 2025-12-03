@@ -1,0 +1,36 @@
+# gRPC Server Configuration
+spring:
+  application:
+    name: grpc-server
+  threads:
+    virtual:
+      enabled: true
+
+# Health check endpoint (for ALB)
+server:
+  port: 8081
+
+# gRPC Server
+grpc:
+  server:
+    port: 9090
+    health-service-enabled: true
+    reflection-service-enabled: true
+
+# Logging
+logging:
+  level:
+    root: INFO
+    com.example.grpc: DEBUG
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+
+# Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
