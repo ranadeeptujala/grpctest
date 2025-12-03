@@ -57,4 +57,3 @@ variable "desired_count" {
   description = "Desired task count"
   type        = number
 }
-
