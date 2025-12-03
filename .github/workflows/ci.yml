@@ -102,7 +102,9 @@ jobs:
         with:
           context: .
           push: false
+          load: true
           tags: grpc-server:${{ github.sha }}
+          platforms: linux/amd64
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
