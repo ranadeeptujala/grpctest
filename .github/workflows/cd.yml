@@ -21,6 +21,7 @@ on:
 
 env:
   AWS_REGION: us-east-1
+  AWS_ROLE_ARN: arn:aws:iam::093667080731:role/GitHubActions-EKS-Deploy
   ECR_REPOSITORY: grpc-server-dev
   ECS_CLUSTER: grpc-server-dev
   ECS_SERVICE: grpc-server-dev
@@ -56,7 +57,7 @@ jobs:
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to Amazon ECR
