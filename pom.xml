@@ -128,6 +128,51 @@
                     </execution>
                 </executions>
             </plugin>
+
+            <!-- Spotless - Code Formatting -->
+            <plugin>
+                <groupId>com.diffplug.spotless</groupId>
+                <artifactId>spotless-maven-plugin</artifactId>
+                <version>2.41.1</version>
+                <configuration>
+                    <java>
+                        <googleJavaFormat>
+                            <version>1.19.1</version>
+                            <style>GOOGLE</style>
+                        </googleJavaFormat>
+                        <removeUnusedImports/>
+                        <importOrder>
+                            <order>java,javax,org,com</order>
+                        </importOrder>
+                    </java>
+                </configuration>
+            </plugin>
+
+            <!-- SpotBugs - Static Analysis -->
+            <plugin>
+                <groupId>com.github.spotbugs</groupId>
+                <artifactId>spotbugs-maven-plugin</artifactId>
+                <version>4.8.2.0</version>
+                <configuration>
+                    <effort>Max</effort>
+                    <threshold>Medium</threshold>
+                    <failOnError>false</failOnError>
+                    <excludeFilterFile>spotbugs-exclude.xml</excludeFilterFile>
+                </configuration>
+            </plugin>
+
+            <!-- Checkstyle -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-checkstyle-plugin</artifactId>
+                <version>3.3.1</version>
+                <configuration>
+                    <configLocation>google_checks.xml</configLocation>
+                    <consoleOutput>true</consoleOutput>
+                    <failsOnError>false</failsOnError>
+                    <linkXRef>false</linkXRef>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 </project>
