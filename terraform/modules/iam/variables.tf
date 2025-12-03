@@ -37,4 +37,3 @@ variable "ecs_task_role_arn" {
   description = "ECS task execution role ARN"
   type        = string
 }
-
