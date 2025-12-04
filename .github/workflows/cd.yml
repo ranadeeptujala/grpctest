@@ -84,56 +84,55 @@ jobs:
           echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
           echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
 
-  # Uncomment when ECS cluster/service is created
-  # deploy-dev:
-  #   name: Deploy to Dev
-  #   needs: build-and-push
-  #   runs-on: ubuntu-latest
-  #   environment: dev
-  #   
-  #   steps:
-  #     - name: Checkout
-  #       uses: actions/checkout@v4
-  #
-  #     - name: Configure AWS credentials (OIDC)
-  #       uses: aws-actions/configure-aws-credentials@v4
-  #       with:
-  #         role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-  #         aws-region: ${{ env.AWS_REGION }}
-  #
-  #     - name: Download current task definition
-  #       run: |
-  #         aws ecs describe-task-definition \
-  #           --task-definition ${{ env.ECS_SERVICE }} \
-  #           --query taskDefinition > task-definition.json
-  #
-  #     - name: Update image in task definition
-  #       id: task-def
-  #       uses: aws-actions/amazon-ecs-render-task-definition@v1
-  #       with:
-  #         task-definition: task-definition.json
-  #         container-name: ${{ env.CONTAINER_NAME }}
-  #         image: ${{ needs.build-and-push.outputs.image }}
-  #
-  #     - name: Deploy to ECS
-  #       uses: aws-actions/amazon-ecs-deploy-task-definition@v1
-  #       with:
-  #         task-definition: ${{ steps.task-def.outputs.task-definition }}
-  #         service: ${{ env.ECS_SERVICE }}
-  #         cluster: ${{ env.ECS_CLUSTER }}
-  #         wait-for-service-stability: true
-  #
-  #     - name: Deployment Summary
-  #       run: |
-  #         echo "## 🚀 Deployment Summary" >> $GITHUB_STEP_SUMMARY
-  #         echo "" >> $GITHUB_STEP_SUMMARY
-  #         echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
-  #         echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
-  #         echo "| **Environment** | dev |" >> $GITHUB_STEP_SUMMARY
-  #         echo "| **Image** | ${{ needs.build-and-push.outputs.image }} |" >> $GITHUB_STEP_SUMMARY
-  #         echo "| **Cluster** | ${{ env.ECS_CLUSTER }} |" >> $GITHUB_STEP_SUMMARY
-  #         echo "| **Service** | ${{ env.ECS_SERVICE }} |" >> $GITHUB_STEP_SUMMARY
-  #         echo "| **Commit** | ${{ github.sha }} |" >> $GITHUB_STEP_SUMMARY
+  deploy-dev:
+    name: Deploy to Dev
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    environment: dev
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Download current task definition
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition ${{ env.ECS_SERVICE }} \
+            --query taskDefinition > task-definition.json
+
+      - name: Update image in task definition
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          container-name: ${{ env.CONTAINER_NAME }}
+          image: ${{ needs.build-and-push.outputs.image }}
+
+      - name: Deploy to ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          task-definition: ${{ steps.task-def.outputs.task-definition }}
+          service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true
+
+      - name: Deployment Summary
+        run: |
+          echo "## 🚀 Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Environment** | dev |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Image** | ${{ needs.build-and-push.outputs.image }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Cluster** | ${{ env.ECS_CLUSTER }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Service** | ${{ env.ECS_SERVICE }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Commit** | ${{ github.sha }} |" >> $GITHUB_STEP_SUMMARY
 
   # Uncomment for staging deployment
   # deploy-staging:

@@ -70,14 +70,10 @@ resource "aws_iam_role" "ecs_task" {
   }
 }
 
-# CloudWatch Log Group
-resource "aws_cloudwatch_log_group" "ecs" {
-  name              = "/ecs/${var.project_name}-${var.environment}"
-  retention_in_days = 30
-
-  tags = {
-    Name = "${var.project_name}-${var.environment}"
-  }
+# CloudWatch Log Group - Created manually due to IAM permissions
+# aws logs create-log-group --log-group-name "/ecs/grpc-server-dev" --region us-east-2
+locals {
+  log_group_name = "/ecs/${var.project_name}-${var.environment}"
 }
 
 # ECS Task Definition
@@ -126,7 +122,7 @@ resource "aws_ecs_task_definition" "main" {
       logConfiguration = {
         logDriver = "awslogs"
         options = {
-          "awslogs-group"         = aws_cloudwatch_log_group.ecs.name
+          "awslogs-group"         = local.log_group_name
           "awslogs-region"        = data.aws_region.current.name
           "awslogs-stream-prefix" = "ecs"
         }
@@ -198,10 +194,8 @@ resource "aws_ecs_service" "main" {
     container_port   = var.grpc_port
   }
 
-  deployment_configuration {
-    maximum_percent         = 200
-    minimum_healthy_percent = 100
-  }
+  deployment_maximum_percent         = 200
+  deployment_minimum_healthy_percent = 100
 
   lifecycle {
     ignore_changes = [task_definition]
