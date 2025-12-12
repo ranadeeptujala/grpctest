@@ -1,0 +1,3 @@
+[submodule "proto/grpcproto"]
+	path = proto/grpcproto
+	url = git@github.com:ranadeeptujala/grpcproto.git
